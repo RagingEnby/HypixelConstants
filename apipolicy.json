@@ -4,7 +4,6 @@
       "Projects cannot violate any laws.",
       "Do not create or develop projects that infringe on the Hypixel trademark and branding.",
       "Your product must be clear that it is not affiliated or endorsed by Hypixel.",
-      "ragingenby is cool (test)",
       {
         "Our API is designed to be used by players, and not for automated data collection at scale.": [
           "For example, you may not use the API for continuous polling of player data for detection of stats earned in-game to offer a history to players using your website. This includes applications that offer a temporary tracking of their stats based on user input, sometimes known as session tracking.",
