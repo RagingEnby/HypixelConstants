@@ -78,7 +78,7 @@ jobs:
         if: steps.commit_info.outputs.is_changed == 'true' && steps.commit_info.outputs.is_initial == 'true'
         run: |
           echo "Handling initial commit: outputting full file content to diff.txt."
-          echo '```diff' > diff.txt
+          echo '```ansi' > diff.txt
           sed 's/^/+/' apipolicy.json >> diff.txt
           echo '```' >> diff.txt
 
@@ -87,6 +87,10 @@ jobs:
         run: |
           if [ -f diff.txt ]; then
             sed -i -e 's/`/\\`/g' diff.txt
+            if [ "${{ steps.commit_info.outputs.is_initial }}" = "false" ]; then
+               echo "Adding ANSI code block fences to diff.txt"
+               sed -i -e '1i```ansi' -e '$a```' diff.txt
+            fi
           else
             echo "diff.txt not found. Creating empty file."
             touch diff.txt
