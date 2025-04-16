@@ -19,22 +19,36 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Check if apipolicy.json changed in the commit
-        id: check_file_changed
+      - name: Determine change status and if initial commit
+        id: commit_info
         run: |
-          # Compare the checked-out commit (HEAD) with its parent (HEAD~1)
-          # Use --quiet to set exit code: 0 if no changes, 1 if changes
-          # Only check the specific file
-          if git diff --quiet HEAD~1 HEAD -- apipolicy.json; then
-            echo "apipolicy.json did not change in commit ${{ github.event.workflow_run.head_sha }}."
-            echo "changed=false" >> $GITHUB_OUTPUT
+          IS_CHANGED='false'
+          IS_INITIAL='false'
+          if git rev-parse --verify HEAD~ >/dev/null 2>&1; then
+            if git diff --quiet HEAD~1 HEAD -- apipolicy.json; then
+              echo "apipolicy.json did not change compared to parent."
+              IS_CHANGED='false'
+            else
+              echo "apipolicy.json changed compared to parent."
+              IS_CHANGED='true'
+            fi
+            IS_INITIAL='false'
           else
-            echo "apipolicy.json changed in commit ${{ github.event.workflow_run.head_sha }}."
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Commit is the initial commit (no parent)."
+            IS_INITIAL='true'
+            if [ -f apipolicy.json ]; then
+              echo "apipolicy.json exists in initial commit."
+              IS_CHANGED='true'
+            else
+              echo "apipolicy.json does not exist in initial commit."
+              IS_CHANGED='false'
+            fi
           fi
+          echo "is_changed=$IS_CHANGED" >> $GITHUB_OUTPUT
+          echo "is_initial=$IS_INITIAL" >> $GITHUB_OUTPUT
 
       - name: Ping and Post GitHub Link
-        if: steps.check_file_changed.outputs.changed == 'true'
+        if: steps.commit_info.outputs.is_changed == 'true'
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
@@ -44,36 +58,40 @@ jobs:
             <@&1362140322871640195> Policy Change Detected!
             ${{ format('[GitHub Link](<{0}/{1}/commit/{2}>)', github.server_url, github.repository, github.event.workflow_run.head_sha) }}
 
-      - name: Get formatted diff for apipolicy.json
-        if: steps.check_file_changed.outputs.changed == 'true'
+      - name: Get formatted diff for apipolicy.json (standard case)
+        if: steps.commit_info.outputs.is_changed == 'true' && steps.commit_info.outputs.is_initial == 'false'
         id: get_diff
         uses: ILikePlayingGames/line-diff-action@v1.3
         with:
           commit-hash: 'HEAD~'
-          file-path: 'apipolicy.json'
           diff-algorithm: histogram
           delta-theme: discord
 
-      - name: Wrap diff in code block
-        if: steps.check_file_changed.outputs.changed == 'true'
+      - name: Get full file content for apipolicy.json (initial commit case)
+        if: steps.commit_info.outputs.is_changed == 'true' && steps.commit_info.outputs.is_initial == 'true'
         run: |
-          # Check if diff.txt was created (it might not if there are no changes, though the outer 'if' should prevent this)
+          echo "Handling initial commit: outputting full file content to diff.txt."
+          echo '```diff' > diff.txt
+          sed 's/^/+/' apipolicy.json >> diff.txt
+          echo '```' >> diff.txt
+
+      - name: Prepare diff content for Discord
+        if: steps.commit_info.outputs.is_changed == 'true'
+        run: |
           if [ -f diff.txt ]; then
-            sed -i -e 's/`/\\`/g' -e '1i```ansi' -e '$a```\n' diff.txt
+            sed -i -e 's/`/\\`/g' diff.txt
           else
-            echo "diff.txt not found. Skipping wrapping."
-            # Create empty file to prevent errors in next steps if they were to run
+            echo "diff.txt not found. Creating empty file."
             touch diff.txt
           fi
 
-
       - name: Count diff characters
-        if: steps.check_file_changed.outputs.changed == 'true'
+        if: steps.commit_info.outputs.is_changed == 'true'
         run: |
           echo "DIFF_CHAR_COUNT=$(wc -c < diff.txt)" >> $GITHUB_ENV
 
-      - name: Post as message to Discord
-        if: steps.check_file_changed.outputs.changed == 'true' && env.DIFF_CHAR_COUNT <= 2000
+      - name: Post diff/content as message to Discord
+        if: steps.commit_info.outputs.is_changed == 'true' && env.DIFF_CHAR_COUNT <= 2000
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
@@ -81,12 +99,11 @@ jobs:
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           raw-content: diff.txt
 
-      - name: Post as file to Discord
-        if: steps.check_file_changed.outputs.changed == 'true' && env.DIFF_CHAR_COUNT > 2000
+      - name: Post diff/content as file to Discord
+        if: steps.commit_info.outputs.is_changed == 'true' && env.DIFF_CHAR_COUNT > 2000
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
           username: GitHub
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           filename: diff.txt
-
