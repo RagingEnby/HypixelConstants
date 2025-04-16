@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Fetch API policy data
-        run: curl -sSL -o apipolicy.json https://api.ragingenby.dev/apipolicy
+        run: curl -sSL https://api.ragingenby.dev/apipolicy | jq '.' > apipolicy.json
 
       - name: Check for changes
         id: check_changes
