@@ -12,6 +12,8 @@ jobs:
   post:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    outputs:
+      parent_sha: ${{ steps.commit_info.outputs.parent_sha }}
     steps:
       - name: Checkout repository at the triggering commit
         uses: actions/checkout@v4
@@ -19,13 +21,16 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Determine change status and if initial commit
+      - name: Determine change status, initial commit, and parent SHA
         id: commit_info
         run: |
           IS_CHANGED='false'
           IS_INITIAL='false'
+          PARENT_SHA=''
           if git rev-parse --verify HEAD~ >/dev/null 2>&1; then
-            if git diff --quiet HEAD~1 HEAD -- apipolicy.json; then
+            PARENT_SHA=$(git rev-parse HEAD~)
+            echo "Parent SHA: $PARENT_SHA"
+            if git diff --quiet $PARENT_SHA HEAD -- apipolicy.json; then
               echo "apipolicy.json did not change compared to parent."
               IS_CHANGED='false'
             else
@@ -46,6 +51,7 @@ jobs:
           fi
           echo "is_changed=$IS_CHANGED" >> $GITHUB_OUTPUT
           echo "is_initial=$IS_INITIAL" >> $GITHUB_OUTPUT
+          echo "parent_sha=$PARENT_SHA" >> $GITHUB_OUTPUT
 
       - name: Ping and Post GitHub Link
         if: steps.commit_info.outputs.is_changed == 'true'
@@ -63,8 +69,8 @@ jobs:
         id: get_diff
         uses: ILikePlayingGames/line-diff-action@v1.3
         with:
-          commit-hash: 'HEAD~'
-          second-commit-hash: 'HEAD'
+          commit-hash: ${{ steps.commit_info.outputs.parent_sha }}
+          second-commit-hash: ${{ github.event.workflow_run.head_sha }}
           diff-algorithm: histogram
           delta-theme: discord
 
