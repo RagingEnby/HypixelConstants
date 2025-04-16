@@ -1,6 +1,7 @@
 {
   "API Policy": {
     "Core Policies": [
+      "kms",
       "Projects cannot violate any laws.",
       "Do not create or develop projects that infringe on the Hypixel trademark and branding.",
       "Your product must be clear that it is not affiliated or endorsed by Hypixel.",
