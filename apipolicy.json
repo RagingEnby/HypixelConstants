@@ -22,8 +22,7 @@
               "/v2/leaderboards",
               "/v2/punishmentstats",
               "/v2/skyblock/news",
-              "/v2/housing/active",
-              "test"
+              "/v2/housing/active"
             ]
           }
         ]
