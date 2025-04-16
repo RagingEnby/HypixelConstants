@@ -1,10 +1,9 @@
 name: Post diff to Discord
+
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - apipolicy.json
+  repository_dispatch:
+    types: [apipolicy-pushed]
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -13,6 +12,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+
       - name: Ping and Post GitHub Link
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
@@ -21,7 +21,13 @@ jobs:
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           content: |
             <@&1362140322871640195>
-            ${{ format('[GitHub Link](<{0}/{1}/commit/{2}>)', github.server_url, github.repository, github.sha) }}
+            ${{ format(
+              '[GitHub Link](<{0}/{1}/commit/{2}>)',
+              github.server_url,
+              github.repository,
+              github.sha
+            ) }}
+
       - name: Get formatted diff
         id: get_diff
         uses: ILikePlayingGames/line-diff-action@v1.3
@@ -29,12 +35,13 @@ jobs:
           commit-hash: '@~'
           diff-algorithm: histogram
           delta-theme: discord
+
       - name: Wrap diff in code block
-        run: >-
-          sed -i -e 's/`/\\`/g' -e '1i```ansi' -e '$a```\n' diff.txt
+        run: sed -i -e 's/`/\\`/g' -e '1i```ansi' -e '$a```\n' diff.txt
+
       - name: Count diff characters
-        run: >-
-          echo "DIFF_CHAR_COUNT=$(wc -c < diff.txt)" >> $GITHUB_ENV
+        run: echo "DIFF_CHAR_COUNT=$(wc -c < diff.txt)" >> $GITHUB_ENV
+
       - name: Post as message to Discord
         if: ${{ env.DIFF_CHAR_COUNT <= 2000 }}
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
@@ -43,6 +50,7 @@ jobs:
           username: GitHub
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           raw-content: diff.txt
+
       - name: Post as file to Discord
         if: ${{ env.DIFF_CHAR_COUNT > 2000 }}
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
