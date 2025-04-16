@@ -5,8 +5,8 @@ on:
   push:
     branches:
       - main
-    #paths:
-    #  - 'apipolicy.json' # <-- Only run if this file changes
+    paths:
+      - 'apipolicy.json' # <-- Only run if this file changes
 jobs:
   post:
     runs-on: ubuntu-latest
