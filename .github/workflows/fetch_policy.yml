@@ -1,0 +1,40 @@
+name: Fetch API Policy
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch API policy data
+        run: curl -sSL -o apipolicy.json https://api.ragingenby.dev/apipolicy
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if ! git diff --quiet apipolicy.json; then
+            echo "File changed, proceeding to commit."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected in apipolicy.json."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure Git
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git add apipolicy.json
+          git commit -m "Update apipolicy.json from API"
+          git push
