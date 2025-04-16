@@ -1,21 +1,40 @@
 # This workflow is forked from:
 # https://github.com/HypixelDatabase/HypixelTracking/blob/master/.github/workflows/discord.yml
 name: Post apipolicy.json diff to Discord
+
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'apipolicy.json' # <-- Only run if this file changes
+  workflow_run:
+    workflows: ["Fetch API Policy"]
+    types:
+      - completed
+
 jobs:
   post:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch HEAD and the commit before it
-        uses: actions/checkout@v3
+      - name: Checkout repository at the triggering commit
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Check if apipolicy.json changed in the commit
+        id: check_file_changed
+        run: |
+          # Compare the checked-out commit (HEAD) with its parent (HEAD~1)
+          # Use --quiet to set exit code: 0 if no changes, 1 if changes
+          # Only check the specific file
+          if git diff --quiet HEAD~1 HEAD -- apipolicy.json; then
+            echo "apipolicy.json did not change in commit ${{ github.event.workflow_run.head_sha }}."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "apipolicy.json changed in commit ${{ github.event.workflow_run.head_sha }}."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Ping and Post GitHub Link
+        if: steps.check_file_changed.outputs.changed == 'true'
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
@@ -23,33 +42,51 @@ jobs:
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           content: |
             <@&1362140322871640195> Policy Change Detected!
-            ${{ format('[GitHub Link](<{0}/{1}/commit/{2}>)', github.server_url, github.repository, github.sha) }}
+            ${{ format('[GitHub Link](<{0}/{1}/commit/{2}>)', github.server_url, github.repository, github.event.workflow_run.head_sha) }} # Use the correct SHA
+
       - name: Get formatted diff for apipolicy.json
+        if: steps.check_file_changed.outputs.changed == 'true'
         id: get_diff
         uses: ILikePlayingGames/line-diff-action@v1.3
         with:
-          commit-hash: '@~'
+          commit-hash: 'HEAD~'
+          file-path: 'apipolicy.json'
           diff-algorithm: histogram
           delta-theme: discord
+
       - name: Wrap diff in code block
-        run: >-
-          sed -i -e 's/`/\\`/g' -e '1i```ansi' -e '$a```\n' diff.txt
+        if: steps.check_file_changed.outputs.changed == 'true'
+        run: |
+          # Check if diff.txt was created (it might not if there are no changes, though the outer 'if' should prevent this)
+          if [ -f diff.txt ]; then
+            sed -i -e 's/`/\\`/g' -e '1i```ansi' -e '$a```\n' diff.txt
+          else
+            echo "diff.txt not found. Skipping wrapping."
+            # Create empty file to prevent errors in next steps if they were to run
+            touch diff.txt
+          fi
+
+
       - name: Count diff characters
-        run: >-
+        if: steps.check_file_changed.outputs.changed == 'true'
+        run: |
           echo "DIFF_CHAR_COUNT=$(wc -c < diff.txt)" >> $GITHUB_ENV
+
       - name: Post as message to Discord
-        if: ${{ env.DIFF_CHAR_COUNT <= 2000 }}
+        if: steps.check_file_changed.outputs.changed == 'true' && env.DIFF_CHAR_COUNT <= 2000
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
           username: GitHub
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           raw-content: diff.txt
+
       - name: Post as file to Discord
-        if: ${{ env.DIFF_CHAR_COUNT > 2000 }}
+        if: steps.check_file_changed.outputs.changed == 'true' && env.DIFF_CHAR_COUNT > 2000
         uses: ILikePlayingGames/discord-webhook@c533d6b0fda570a8fd1676878c05bc4f50cc1240
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
           username: GitHub
           avatar-url: 'https://cdn.discordapp.com/avatars/999680196040982618/df91181b3f1cf0ef1592fbe18e0962d7.webp'
           filename: diff.txt
+
