@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Fetch API policy data
         run: curl -sSL https://api.ragingenby.dev/apipolicy | jq '.' > apipolicy.json
@@ -21,12 +23,19 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          if ! git diff --quiet apipolicy.json; then
-            echo "File changed, proceeding to commit."
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
+          # Ensure the file exists before diffing
+          if [ ! -f apipolicy.json ]; then
+            echo "apipolicy.json not found after fetch."
+            echo "changed=false" >> $GITHUB_OUTPUT
+            exit 0 # Exit step successfully if file doesn't exist
+          fi
+          # Check if the file is tracked and has diffs
+          if git diff --quiet apipolicy.json; then
             echo "No changes detected in apipolicy.json."
             echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "File changed, proceeding to commit."
+            echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Configure Git
@@ -37,7 +46,11 @@ jobs:
 
       - name: Commit and push if changed
         if: steps.check_changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
         run: |
           git add apipolicy.json
           git commit -m "Update apipolicy.json from API"
-          git push
+          # Push using the PAT for authentication
+          # HEAD:main assumes you want to push to the 'main' branch
+          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
