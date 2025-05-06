@@ -65,7 +65,8 @@
       "Your project must not be utilized in any manner that could compromise the integrity of our games.",
       "Projects should not create an unfair advantage for players and must not encourage the breaking of our rules.",
       "Projects should not de-anonymize players such as those who are using the Hypixel nick feature.",
-      "Projects should not be created for the sole purpose of tracking specific players, for example, players with specific ranks or stats."
+      "Projects should not be created for the sole purpose of tracking specific players, for example, players with specific ranks or stats.",
+      "Projects must not aim to copy or recreate the Hypixel Server experience, such as recreating a Hypixel Minigame."
     ],
     "Using the API": [
       {
@@ -92,7 +93,7 @@
     ]
   },
   "lastUpdated": {
-    "string": "April 3, 2025",
-    "unix": 1743652800
+    "string": "May 6, 2025",
+    "unix": 1746504000
   }
 }
