@@ -8,10 +8,9 @@
         "Our API is designed to be used by players, and not for automated data collection at scale.": [
           "For example, you may not use the API for continuous polling of player data for detection of stats earned in-game to offer a history to players using your website. This includes applications that offer a temporary tracking of their stats based on user input, sometimes known as session tracking.",
           {
-            "We do make an exception for those applications that wish to update only a few players with a specific purpose, such as role syncing for a small set of users, or activity tracking for a guild.": [
-              "We still ask that people doing this do so at a respectful interval, and not request data more often than absolutely needed.",
-              "We will not grant increased limits or production applications for this purpose.",
-              "Applications that are created for the intention of tracking player statistics for progress tracking are not allowed."
+            "We do make an exception to this rule for those wishing to use the API for Guild activity tracking. With some restrictions:": [
+              "Requests must still be made at a reasonable interval, we suggest no more than requesting the same player once an hour. But less frequent requests are preferred.",
+              "We will only grant personal applications for this purpose, these applications will only be granted to the owner of a guild. Production applications and increased limits cannot be granted for this purpose."
             ]
           },
           "We provide some endpoints that do not require an API key, these exist to allow more continuous polling of that data and we will not provide an increased API limit for requests that wish to bypass this for faster updates of their data.",
@@ -93,7 +92,7 @@
     ]
   },
   "lastUpdated": {
-    "string": "May 6, 2025",
-    "unix": 1746504000
+    "string": "September 28, 2025",
+    "unix": 1759032000
   }
 }
